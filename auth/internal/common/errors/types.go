@@ -2,9 +2,9 @@
 package errors
 
 type AppError struct {
-	Code       int    // HTTP status code
-	Message    string // user-facing message
-	Internal   string // optional internal/debug message
+	Code     int
+	Message  string
+	Internal string
 }
 
 func (e *AppError) Error() string {

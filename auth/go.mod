@@ -4,6 +4,7 @@ go 1.22.0
 
 require (
 	github.com/gin-gonic/gin v1.10.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	go.uber.org/zap v1.27.0
 )
 
