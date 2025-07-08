@@ -2,10 +2,11 @@
 package model
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 	"time"
+
+	appErr "github.com/dawit_hopes/saas/auth/internal/common/errors"
 )
 
 type Role string
@@ -31,11 +32,11 @@ type User struct {
 func NewUser(id, email, hashedPassword string, role Role) (*User, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	if !isValidEmail(email) {
-		return nil, errors.New("invalid email format")
+		return nil, appErr.ErrInvalidEmailFormat
 	}
 
 	if role != RoleUser && role != RoleAdmin {
-		return nil, errors.New("invalid role")
+		return nil, appErr.ErrInvalidRole
 	}
 
 	return &User{
