@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	appErr "github.com/dawit_hopes/saas/auth/internal/common/errors"
+	"github.com/dawit_hopes/saas/auth/internal/domain/port/outbound"
 )
 
 var jwtSecret = []byte("")
@@ -14,32 +15,33 @@ var jwtSecret = []byte("")
 type JWTProvider struct {
 	signingKey []byte
 	issuer     string
-	ttl        time.Duration
 }
 
-func NewTokenProvide(signingKey []byte, issuer string, ttl time.Duration) *JWTProvider {
+func NewTokenProvider(signingKey []byte, issuer string) outbound.TokenProvider {
 	return &JWTProvider{
 		signingKey: signingKey,
 		issuer:     issuer,
-		ttl:        ttl,
 	}
 }
 
-func (p *JWTProvider) GenerateToken(userID string, roles []string) (string, error) {
-
+func (p *JWTProvider) GenerateToken(userID string, ttl time.Duration) (string, *appErr.AppError) {
 	claims := jwt.RegisteredClaims{
 		Subject:   userID,
 		Issuer:    p.issuer,
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(p.ttl)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return token.SignedString(p.signingKey)
+	signedToken, err := token.SignedString(p.signingKey)
+	if err != nil {
+		return "", appErr.ErrInternalServer
+	}
+	return signedToken, nil
 }
 
-func (p *JWTProvider) ValidateToken(tokenStr string) (*jwt.RegisteredClaims, error) {
+func (p *JWTProvider) ValidateToken(tokenStr string) (*jwt.RegisteredClaims, *appErr.AppError) {
 	token, err := jwt.ParseWithClaims(tokenStr, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, appErr.ErrInvalidSigningMethod
@@ -52,7 +54,7 @@ func (p *JWTProvider) ValidateToken(tokenStr string) (*jwt.RegisteredClaims, err
 
 	claims, ok := token.Claims.(*jwt.RegisteredClaims)
 	if !ok || !token.Valid {
-		return nil, appErr.ErrInvlidToken
+		return nil, appErr.ErrInvalidToken
 	}
 
 	return claims, nil

@@ -6,7 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type UserMongo struct {
+type UserDocument struct {
 	ID        primitive.ObjectID `bson:"_id"`
 	Email     string             `bson:"email"`
 	Password  string             `bson:"password"`
@@ -14,8 +14,8 @@ type UserMongo struct {
 	UpdatedAt primitive.DateTime `bson:"updated_at"`
 }
 
-// ToDomain converts UserMongo to domain model User
-func (u *UserMongo) ToDomain() model.User {
+// ToDomain converts UserDocument to domain model User
+func (u *UserDocument) ToDomain() model.User {
 	return model.User{
 		ID:        u.ID.Hex(),
 		Email:     u.Email,
@@ -25,13 +25,10 @@ func (u *UserMongo) ToDomain() model.User {
 	}
 }
 
-// FromDomain converts domain model User to UserMongo
-func FromDomain(user model.User) (UserMongo, error) {
-	id, err := primitive.ObjectIDFromHex(user.ID)
-	if err != nil {
-		return UserMongo{}, err
-	}
-	return UserMongo{
+// FromDomain converts domain model User to UserDocument
+func FromDomain(user model.User) (UserDocument, error) {
+	id := primitive.NewObjectID()
+	return UserDocument{
 		ID:        id,
 		Email:     user.Email,
 		Password:  user.Password,

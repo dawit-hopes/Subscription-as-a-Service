@@ -3,12 +3,17 @@ package bootstrap
 
 import (
 	"github.com/dawit_hopes/saas/auth/internal/infra/http/middleware"
+	"github.com/dawit_hopes/saas/auth/internal/infra/http/routes"
+	// "github.com/dawit_hopes/saas/auth/internal/bootstrap"
+
 	"github.com/dawit_hopes/saas/auth/internal/infra/log"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func IninRouter() *gin.Engine {
+var APIVersion = "v1"
+
+func InitRouter(application Application) *gin.Engine {
 	r := gin.New()
 
 	r.Use(gin.Recovery())
@@ -18,9 +23,13 @@ func IninRouter() *gin.Engine {
 		log.Logger.Fatal("failed to set trusted proxies", zap.Error(err))
 	}
 
+	v1 := r.Group("/api/" + APIVersion)
+
 	r.GET("/health", func(ctx *gin.Context) {
 		ctx.IndentedJSON(200, gin.H{"status": "ok"})
 	})
+
+	routes.RegisterAuthRoutes(v1.Group("/auth"), application.AuthApplication)
 
 	return r
 }
