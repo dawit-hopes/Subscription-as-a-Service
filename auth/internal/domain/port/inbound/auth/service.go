@@ -14,5 +14,5 @@ type AuthService interface {
 	Login(ctx context.Context, email, password string) (model.Auth, *appErr.AppError)
 	RefreshToken(ctx context.Context, refreshToken string) (model.Auth, *appErr.AppError)
 	Me(ctx context.Context, accessToken string) (model.User, *appErr.AppError)
-	// Logout(ctx context.Context, accessToken string) *appErr.AppError
+	Logout(ctx context.Context, accessToken string) *appErr.AppError
 }

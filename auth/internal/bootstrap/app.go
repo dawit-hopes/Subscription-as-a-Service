@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"github.com/dawit_hopes/saas/auth/internal/infra/config"
 	"github.com/dawit_hopes/saas/auth/internal/infra/log"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,7 +25,10 @@ func InitializeApp() (*gin.Engine, error) {
 
 	db := mongoClient.Database(env.MongoDBName)
 
-	persistance := InitPersistence(db.Collection("users"))
+	persistance := InitPersistence([]*mongo.Collection{
+		db.Collection("users"),
+		db.Collection("tokens"),
+	})
 	signingKey := []byte(env.SigningKey)
 	issuer := env.Issuer
 	cost := env.Cost

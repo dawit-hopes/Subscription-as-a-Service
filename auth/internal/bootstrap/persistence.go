@@ -8,10 +8,12 @@ import (
 
 type Persistance struct {
 	UserRepository outbound.UserRepository
+	TokenRepositoy outbound.RefreshTokenRepository
 }
 
-func InitPersistence(collection *mongo.Collection) Persistance {
+func InitPersistence(collection []*mongo.Collection) Persistance {
 	return Persistance{
-		UserRepository: db.NewUserRepositoryMongo(collection),
+		UserRepository: db.NewUserRepositoryMongo(collection[0]),
+		TokenRepositoy: db.NewTokenRepository(collection[1]),
 	}
 }

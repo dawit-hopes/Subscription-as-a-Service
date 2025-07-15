@@ -25,6 +25,7 @@ type RefreshToken struct {
 
 type AccessToken struct {
 	AccessToken string `json:"access_token"`
+	
 }
 
 func isValidEmail(email string) bool {

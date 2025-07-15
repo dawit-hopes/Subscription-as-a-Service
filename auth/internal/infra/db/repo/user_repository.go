@@ -14,7 +14,6 @@ import (
 
 	appErr "github.com/dawit_hopes/saas/auth/internal/common/errors"
 	db "github.com/dawit_hopes/saas/auth/internal/infra/db/model"
-
 )
 
 type userRepositoryMongo struct {
@@ -27,12 +26,18 @@ func NewUserRepositoryMongo(collection *mongo.Collection) outbound.UserRepositor
 	}
 }
 func (userRepo *userRepositoryMongo) GetByID(ctx context.Context, id string) (*model.User, *appErr.AppError) {
-	filter := bson.M{"_id": id}
+	objecID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.Logger.Error("failed to convert id to ObjectID: " + err.Error())
+		return nil, appErr.ErrGeneralDatabaseDelete
+	}
+
+	filter := bson.M{"_id": objecID}
 	var user db.UserDocument
-	err := userRepo.collection.FindOne(ctx, filter).Decode(&user)
+	err = userRepo.collection.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, nil
+			return nil, appErr.ErrUserNotFound
 		}
 		return nil, appErr.ErrGeneralDatabaseQuery
 	}

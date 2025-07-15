@@ -15,7 +15,7 @@ var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-
 type User struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
-	Password  string    `json:"password"`
+	Password  string    `json:"-"`
 	Location  string    `json:"location"`
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`

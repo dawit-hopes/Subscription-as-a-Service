@@ -9,5 +9,10 @@ type AuthResponse struct {
 
 type UserResponse struct {
 	StatusCode int
-	User model.User
+	User       model.User
+}
+
+type LogoutResponse struct {
+	StatusCode int
+	Message    string
 }

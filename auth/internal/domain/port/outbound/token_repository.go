@@ -7,7 +7,7 @@ import (
 	"github.com/dawit_hopes/saas/auth/internal/domain/model"
 )
 
-type RefreshToken interface {
+type RefreshTokenRepository interface {
 	Create(ctx context.Context, token model.RefreshToken) *appErr.AppError
 	GetByUserID(ctx context.Context, userID string) (*model.RefreshToken, *appErr.AppError)
 	Delete(ctx context.Context, userID string) *appErr.AppError

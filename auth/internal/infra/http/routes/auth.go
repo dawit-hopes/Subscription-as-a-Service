@@ -5,7 +5,8 @@ import (
 	"net/http"
 
 	"github.com/dawit_hopes/saas/auth/internal/domain/model"
-	"github.com/dawit_hopes/saas/auth/internal/domain/port/inbound"
+	auth "github.com/dawit_hopes/saas/auth/internal/domain/port/inbound/auth"
+
 	"github.com/dawit_hopes/saas/auth/internal/infra/http/dto"
 	"github.com/dawit_hopes/saas/auth/internal/infra/http/utils"
 	"github.com/gin-gonic/gin"
@@ -15,21 +16,22 @@ import (
 
 // AuthHandler handles HTTP requests for authentication
 type AuthHandler struct {
-	authService inbound.AuthService
+	authService auth.AuthService
 }
 
 // NewAuthHandler creates a new AuthHandler
-func NewAuthHandler(authService inbound.AuthService) *AuthHandler {
+func NewAuthHandler(authService auth.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }
 
-func RegisterAuthRoutes(rg *gin.RouterGroup, authService inbound.AuthService) {
+func RegisterAuthRoutes(rg *gin.RouterGroup, authService auth.AuthService) {
 	handler := NewAuthHandler(authService)
 
 	rg.POST("/register", wrap(handler.Register))
 	rg.POST("/login", wrap(handler.Login))
 	rg.POST("/refresh-token", wrap(handler.RefreshToken))
 	rg.POST("/me", wrap(handler.Me))
+	rg.POST("/logout", wrap(handler.Logout))
 }
 
 func wrap(f func(http.ResponseWriter, *http.Request)) gin.HandlerFunc {
@@ -127,5 +129,24 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	utils.SendSuccessResponse(w, dto.UserResponse{
 		StatusCode: http.StatusOK,
 		User:       usr,
+	})
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	var body dto.AccessToken
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		utils.SendErrorResponse(w, *appErr.ErrInvalidJSONPayload)
+		return
+	}
+
+	err := h.authService.Logout(r.Context(), body.AccessToken)
+	if err != nil {
+		utils.SendErrorResponse(w, *err)
+		return
+	}
+
+	utils.SendSuccessResponse(w, dto.LogoutResponse{
+		StatusCode: http.StatusOK,
+		Message:    "Successfully logout",
 	})
 }

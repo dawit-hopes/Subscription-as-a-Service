@@ -6,23 +6,33 @@ import (
 	"time"
 
 	"github.com/dawit_hopes/saas/auth/internal/domain/model"
-	"github.com/dawit_hopes/saas/auth/internal/domain/port/inbound"
+	auth "github.com/dawit_hopes/saas/auth/internal/domain/port/inbound/auth"
+	token "github.com/dawit_hopes/saas/auth/internal/domain/port/inbound/token"
+	user "github.com/dawit_hopes/saas/auth/internal/domain/port/inbound/user"
+
 	"github.com/dawit_hopes/saas/auth/internal/domain/port/outbound"
 
 	appErr "github.com/dawit_hopes/saas/auth/internal/common/errors"
 )
 
+const (
+	AccessTokenTTL  = 60 * time.Hour
+	RefreshTokenTTL = 30 * 24 * time.Hour
+)
+
 type authService struct {
-	userApp         inbound.UserUservice
+	userService     user.UserService
+	tokenService    token.RefreshTokenService
 	tokenProvider   outbound.TokenProvider
 	passwordService outbound.PasswordSecurity
 }
 
-func NewAuthService(userApp inbound.UserUservice, tokenProvider outbound.TokenProvider, passwordService outbound.PasswordSecurity) inbound.AuthService {
+func NewAuthService(userService user.UserService, tokenProvider outbound.TokenProvider, passwordService outbound.PasswordSecurity, tokenService token.RefreshTokenService) auth.AuthService {
 	return &authService{
-		userApp:         userApp,
+		userService:     userService,
 		tokenProvider:   tokenProvider,
 		passwordService: passwordService,
+		tokenService:    tokenService,
 	}
 }
 
@@ -57,6 +67,15 @@ func (a *authService) generateToken(userID string) (model.Auth, *appErr.AppError
 
 }
 
+func (a *authService) newRefreshToken(userID, token string) model.RefreshToken {
+	return model.RefreshToken{
+		UserID:    userID,
+		Token:     token,
+		Revoked:   false,
+		ExpiresAt: time.Now().Add(RefreshTokenTTL),
+	}
+}
+
 func (a *authService) Signup(ctx context.Context, user model.User) (model.Auth, *appErr.AppError) {
 	if err := user.Validation(); err != nil {
 		return model.Auth{}, err
@@ -66,7 +85,7 @@ func (a *authService) Signup(ctx context.Context, user model.User) (model.Auth, 
 		return model.Auth{}, err
 	}
 	user.Password = hashedPassword
-	newUser, err := a.userApp.Create(ctx, &user)
+	newUser, err := a.userService.Create(ctx, &user)
 	if err != nil {
 		return model.Auth{}, err
 	}
@@ -74,11 +93,15 @@ func (a *authService) Signup(ctx context.Context, user model.User) (model.Auth, 
 	if err != nil {
 		return model.Auth{}, err
 	}
+
+	if err := a.tokenService.Create(ctx, a.newRefreshToken(newUser.ID, token.RefreshToken)); err != nil {
+		return model.Auth{}, err
+	}
 	return token, nil
 }
 
 func (a *authService) Login(ctx context.Context, email, password string) (model.Auth, *appErr.AppError) {
-	existUser, err := a.userApp.GetByEmail(ctx, email)
+	existUser, err := a.userService.GetByEmail(ctx, email)
 	if err != nil {
 		return model.Auth{}, err
 	}
@@ -87,12 +110,16 @@ func (a *authService) Login(ctx context.Context, email, password string) (model.
 		return model.Auth{}, appErr.ErrInvalidCredentials
 	}
 
-	token, err := a.generateToken(existUser.ID)
+	authTokens, err := a.generateToken(existUser.ID)
 	if err != nil {
 		return model.Auth{}, appErr.ErrInternalServer
 	}
 
-	return token, nil
+	if err := a.tokenService.Update(ctx, a.newRefreshToken(existUser.ID, authTokens.RefreshToken)); err != nil {
+		return model.Auth{}, err
+	}
+
+	return authTokens, nil
 }
 
 func (a *authService) RefreshToken(ctx context.Context, refreshToken string) (model.Auth, *appErr.AppError) {
@@ -101,12 +128,34 @@ func (a *authService) RefreshToken(ctx context.Context, refreshToken string) (mo
 		return model.Auth{}, err
 	}
 
-	token, err := a.generateToken(userID)
+	data, err := a.tokenService.GetByUserID(ctx, userID)
+	if err != nil {
+		return model.Auth{}, err
+	}
+
+	if data.Token != refreshToken || data.Revoked {
+		return model.Auth{}, appErr.ErrInvalidToken
+	}
+
+	if time.Now().After(data.ExpiresAt) {
+		return model.Auth{}, appErr.ErrInvalidToken
+	}
+
+	authTokens, err := a.generateToken(userID)
 	if err != nil {
 		return model.Auth{}, appErr.ErrInternalServer
 	}
 
-	return token, nil
+	if err := a.tokenService.Update(ctx, model.RefreshToken{
+		UserID:    userID,
+		Token:     authTokens.RefreshToken,
+		Revoked:   false,
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+	}); err != nil {
+		return model.Auth{}, err
+	}
+
+	return authTokens, nil
 }
 
 func (a *authService) Me(ctx context.Context, accessToken string) (model.User, *appErr.AppError) {
@@ -115,10 +164,31 @@ func (a *authService) Me(ctx context.Context, accessToken string) (model.User, *
 		return model.User{}, err
 	}
 
-	user, err := a.userApp.GetByID(ctx, userID)
+	token, err := a.tokenService.GetByUserID(ctx, userID)
 	if err != nil {
-		return model.User{}, appErr.ErrInternalServer
+		return model.User{}, err
+	}
+
+	if token.Revoked {
+		return model.User{}, appErr.ErrInvalidToken
+	}
+
+	user, err := a.userService.GetByID(ctx, userID)
+	if err != nil {
+		return model.User{}, err
 	}
 
 	return *user, nil
+}
+
+func (a *authService) Logout(ctx context.Context, accessToken string) *appErr.AppError {
+	userID, err := a.getUserID(accessToken)
+	if err != nil {
+		return err
+	}
+
+	if err := a.tokenService.RevokeByUserID(ctx, userID); err != nil {
+		return err
+	}
+	return nil
 }

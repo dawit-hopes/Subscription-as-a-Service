@@ -18,7 +18,7 @@ type tokenRepository struct {
 	collection *mongo.Collection
 }
 
-func NewTokenRepository(collection *mongo.Collection) outbound.RefreshToken {
+func NewTokenRepository(collection *mongo.Collection) outbound.RefreshTokenRepository {
 	return &tokenRepository{
 		collection: collection,
 	}
