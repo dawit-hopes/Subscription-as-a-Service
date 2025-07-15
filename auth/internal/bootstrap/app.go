@@ -36,7 +36,7 @@ func InitializeApp() (*gin.Engine, error) {
 	application := InitApplication(service)
 
 	// Router (with middleware + routes)
-	router := InitRouter(application)
+	router := InitRouter(application, service)
 
 	return router, nil
 }

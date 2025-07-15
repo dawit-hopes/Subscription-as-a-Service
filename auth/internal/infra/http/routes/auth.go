@@ -30,8 +30,13 @@ func RegisterAuthRoutes(rg *gin.RouterGroup, authService auth.AuthService) {
 	rg.POST("/register", wrap(handler.Register))
 	rg.POST("/login", wrap(handler.Login))
 	rg.POST("/refresh-token", wrap(handler.RefreshToken))
-	rg.POST("/me", wrap(handler.Me))
-	rg.POST("/logout", wrap(handler.Logout))
+}
+
+func RegisterProtectedAuthRoutes(rg *gin.RouterGroup, authService auth.AuthService) {
+	handler := NewAuthHandler(authService)
+
+	rg.GET("/me", handler.Me)
+	rg.POST("/logout", handler.Logout)
 }
 
 func wrap(f func(http.ResponseWriter, *http.Request)) gin.HandlerFunc {
@@ -113,39 +118,39 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // Me handles fetching the current user information
-func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	var body dto.AccessToken
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		utils.SendErrorResponse(w, *appErr.ErrInvalidJSONPayload)
+func (h *AuthHandler) Me(c *gin.Context) {
+	userID, ok := c.Get("userID")
+	if !ok {
+		utils.SendErrorResponse(c.Writer, *appErr.ErrUnauthorized)
 		return
 	}
 
-	usr, err := h.authService.Me(r.Context(), body.AccessToken)
+	usr, err := h.authService.Me(c.Request.Context(), userID.(string))
 	if err != nil {
-		utils.SendErrorResponse(w, *err)
+		utils.SendErrorResponse(c.Writer, *err)
 		return
 	}
 
-	utils.SendSuccessResponse(w, dto.UserResponse{
+	utils.SendSuccessResponse(c.Writer, dto.UserResponse{
 		StatusCode: http.StatusOK,
 		User:       usr,
 	})
 }
 
-func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Logout(c *gin.Context) {
 	var body dto.AccessToken
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		utils.SendErrorResponse(w, *appErr.ErrInvalidJSONPayload)
+	if err := json.NewDecoder(c.Request.Body).Decode(&body); err != nil {
+		utils.SendErrorResponse(c.Writer, *appErr.ErrInvalidJSONPayload)
 		return
 	}
 
-	err := h.authService.Logout(r.Context(), body.AccessToken)
+	err := h.authService.Logout(c.Request.Context(), body.AccessToken)
 	if err != nil {
-		utils.SendErrorResponse(w, *err)
+		utils.SendErrorResponse(c.Writer, *err)
 		return
 	}
 
-	utils.SendSuccessResponse(w, dto.LogoutResponse{
+	utils.SendSuccessResponse(c.Writer, dto.LogoutResponse{
 		StatusCode: http.StatusOK,
 		Message:    "Successfully logout",
 	})

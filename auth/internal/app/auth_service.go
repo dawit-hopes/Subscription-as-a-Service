@@ -158,12 +158,7 @@ func (a *authService) RefreshToken(ctx context.Context, refreshToken string) (mo
 	return authTokens, nil
 }
 
-func (a *authService) Me(ctx context.Context, accessToken string) (model.User, *appErr.AppError) {
-	userID, err := a.getUserID(accessToken)
-	if err != nil {
-		return model.User{}, err
-	}
-
+func (a *authService) Me(ctx context.Context, userID string) (model.User, *appErr.AppError) {
 	token, err := a.tokenService.GetByUserID(ctx, userID)
 	if err != nil {
 		return model.User{}, err

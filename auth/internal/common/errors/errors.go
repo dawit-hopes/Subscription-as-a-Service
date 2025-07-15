@@ -28,4 +28,5 @@ var (
 	ErrDocumentNotFound          = New(http.StatusNotFound, "Document not found")
 	ErrTokenAlreadyExists        = New(http.StatusBadRequest, "token already exists for user")
 	ErrFailedToRevokToken        = New(http.StatusInternalServerError, "failed to revoke token")
+	ErrUnauthorized              = New(http.StatusUnauthorized, "Unauthroized")
 )
