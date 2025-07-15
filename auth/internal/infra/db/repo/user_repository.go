@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dawit_hopes/saas/auth/internal/domain/model"
 	"github.com/dawit_hopes/saas/auth/internal/domain/port/outbound"
@@ -12,6 +13,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	appErr "github.com/dawit_hopes/saas/auth/internal/common/errors"
+	db "github.com/dawit_hopes/saas/auth/internal/infra/db/model"
+
 )
 
 type userRepositoryMongo struct {
@@ -25,7 +28,7 @@ func NewUserRepositoryMongo(collection *mongo.Collection) outbound.UserRepositor
 }
 func (userRepo *userRepositoryMongo) GetByID(ctx context.Context, id string) (*model.User, *appErr.AppError) {
 	filter := bson.M{"_id": id}
-	var user UserDocument
+	var user db.UserDocument
 	err := userRepo.collection.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -38,7 +41,7 @@ func (userRepo *userRepositoryMongo) GetByID(ctx context.Context, id string) (*m
 }
 
 func (userRepo *userRepositoryMongo) Create(ctx context.Context, user *model.User) (*model.User, *appErr.AppError) {
-	userDoc, err := FromDomain(*user)
+	userDoc, err := db.FromDomain(*user)
 	if err != nil {
 		log.Logger.Error("failed to convert user to document: " + err.Error())
 		return nil, appErr.ErrInternalServer
@@ -58,7 +61,7 @@ func (userRepo *userRepositoryMongo) Create(ctx context.Context, user *model.Use
 }
 
 func (userRepo *userRepositoryMongo) Update(ctx context.Context, user *model.User) (*model.User, *appErr.AppError) {
-	userDoc, err := FromDomain(*user)
+	userDoc, err := db.FromDomain(*user)
 	if err != nil {
 		log.Logger.Error("failed to convert user to document: " + err.Error())
 		return nil, appErr.ErrGeneralDatabaseUpdate
@@ -96,14 +99,15 @@ func (userRepo *userRepositoryMongo) Delete(ctx context.Context, id string) *app
 
 func (userRepo *userRepositoryMongo) GetByEmail(ctx context.Context, email string) (*model.User, *appErr.AppError) {
 	filter := bson.M{"email": email}
-	var user UserDocument
+	var user db.UserDocument
 	err := userRepo.collection.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, appErr.ErrUserNotFound
 		}
 		return nil, appErr.ErrGeneralDatabaseQuery
 	}
+
 	userDomain := user.ToDomain()
 	return &userDomain, nil
 }

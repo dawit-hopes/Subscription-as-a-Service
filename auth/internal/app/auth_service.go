@@ -122,5 +122,3 @@ func (a *authService) Me(ctx context.Context, accessToken string) (model.User, *
 
 	return *user, nil
 }
-
-

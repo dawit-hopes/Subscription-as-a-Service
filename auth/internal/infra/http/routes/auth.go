@@ -47,8 +47,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	
-
 	token, err := h.authService.Signup(r.Context(), model.User{
 		Email:    user.Email,
 		Password: user.Password,
@@ -71,6 +69,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		utils.SendErrorResponse(w, *appErr.ErrInvalidJSONPayload)
+		return
+	}
+
+	if err := user.Validation(); err != nil {
+		utils.SendErrorResponse(w, *err)
 		return
 	}
 

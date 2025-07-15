@@ -2,9 +2,8 @@ package bootstrap
 
 import (
 	"github.com/dawit_hopes/saas/auth/internal/domain/port/outbound"
-	"github.com/dawit_hopes/saas/auth/internal/infra/db"
-		"go.mongodb.org/mongo-driver/mongo"
-
+	"github.com/dawit_hopes/saas/auth/internal/infra/db/repo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Persistance struct {

@@ -27,7 +27,7 @@ type AccessToken struct {
 	AccessToken string `json:"access_token"`
 }
 
-func (u *SignUp) isValidEmail(email string) bool {
+func isValidEmail(email string) bool {
 	return emailRegex.MatchString(email)
 }
 
@@ -35,7 +35,21 @@ func (u *SignUp) Validation() *appErr.AppError {
 	if u.Email == "" {
 		return appErr.ErrInvalidEmailFormat
 	}
-	if !u.isValidEmail(u.Email) {
+	if !isValidEmail(u.Email) {
+		return appErr.ErrInvalidEmailFormat
+	}
+	if len(u.Password) < 6 {
+		return appErr.ErrInvalidCredentials
+	}
+	return nil
+}
+
+
+func (u *Login) Validation() *appErr.AppError {
+	if u.Email == "" {
+		return appErr.ErrInvalidEmailFormat
+	}
+	if !isValidEmail(u.Email) {
 		return appErr.ErrInvalidEmailFormat
 	}
 	if len(u.Password) < 6 {
